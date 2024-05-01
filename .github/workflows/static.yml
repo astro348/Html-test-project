@@ -1,13 +1,12 @@
-# Simple workflow for deploying static content to GitHub Pages
+
 name: Deploy static content to Pages
 
 on:
-  # Runs on pushes targeting the default branch
+  # Runs on pushes targeting the default branch (main) and pull requests
   push:
-    branches: ["master"]
-
-  # Allows you to run this workflow manually from the Actions tab
-  workflow_dispatch:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
 permissions:
@@ -23,20 +22,37 @@ concurrency:
 jobs:
   # Single deploy job since we're just deploying
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+
+      # Check if the event is a pull request
+      - name: Set environment variables
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "PREVIEW_URL=https://github.com/${{ github.repository }}/pull/${{ github.event.pull_request.number }}/checks" >> $GITHUB_ENV
+      # Set up Pages
       - name: Setup Pages
         uses: actions/configure-pages@v2
+
+      # Upload artifact
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v1
         with:
           # Upload entire repository
           path: '.'
+
+      # Deploy to GitHub Pages
       - name: Deploy to GitHub Pages
-        id: deployment
+        if: github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.action == 'closed' && github.event.pull_request.merged)
         uses: actions/deploy-pages@v1
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          # Use the preview URL for pull requests and the default Pages URL for pushes to main
+          target_branch: ${{ github.event.pull_request.head.ref }}
+          repository_name: ${{ github.repository }}
+          # Use the preview URL for pull requests and the default Pages URL for pushes to main
+          keep_files: ${{ github.event_name == 'pull_request' }}
+          folder: '.'
+          clean: true
