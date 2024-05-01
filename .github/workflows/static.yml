@@ -1,29 +1,42 @@
-name: Continuous Deployment Dev
+# Simple workflow for deploying static content to GitHub Pages
+name: Deploy static content to Pages
 
 on:
+  # Runs on pushes targeting the default branch
   push:
-    branches:
-      - 'master'
+    branches: ["master"]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+# Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Allow one concurrent deployment
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
 
 jobs:
-  service-names:
-    name: Set Service Names
+  # Single deploy job since we're just deploying
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
-    outputs:
-      services: ${{ steps.set_service_names.outputs.services }}
     steps:
-    - uses: actions/checkout@v2
-    - uses: lots0logs/gh-action-get-changed-files@2.1.4
-      id: changed-files
-      with:
-        token: ${{ secrets.GITHUB_TOKEN }}
-    - name: Detect service changes
-      uses: ./.github/actions/detect-service-changes
-      id: service-changes
-      with:
-        changed-files: ${{ steps.changed-files.outputs.all }}
-    - id: set_service_names
-      run: |
-        echo "::set-output name=services::$SERVICES"
-      env:
-        SERVICES: ${{ steps.service-changes.outputs.services }}
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup Pages
+        uses: actions/configure-pages@v2
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          # Upload entire repository
+          path: '.'
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
